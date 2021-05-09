@@ -1,0 +1,265 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+//当前已经发现并且依然没有解决的事情：
+//1.在借阅与归还功能中，调用了查询，导致会输出查询的提示及结果，
+//	应该把查询中的输入与提示删除，在调用的地方对result进行判断，
+//	再根据情况输出。
+//2.排序完成之后不会保存到文件中，应该在排序功能中，完成排序时
+//	清空文件内容，再将链表写入文件。借阅和归还功能也需要数据更
+//	新，方法同理
+
+struct bookInfo {
+	char name[20];
+	float price;
+	int num;
+};
+
+struct Node {
+	struct bookInfo book;
+	struct Node* next;
+};
+
+struct Node* list = NULL;
+
+//初始化界面和键盘交互
+void menu();
+void keyDown();
+//创建链表
+struct Node* createHead();
+struct Node* createNode(struct bookInfo book);
+//打印图书信息
+void printList(struct Node* headNode);
+//插入节点，通过表头方式插入
+void insertNode(struct Node* headNode, struct bookInfo book);
+//查找和删除书籍
+struct Node* searchNode(struct Node* headNode, char* bookname);
+void deleteNode(struct Node* headNode, char* bookname);
+//文件读写
+void writeToFile(char* filename, struct Node* headNode);
+void readFromFile(const char* filename, struct Node* headNode);
+//排序
+void bubbleSortList(struct Node* headNode);
+
+int main() {
+	
+	list = createHead();
+	readFromFile("bookinfo.txt", list);
+
+	while (1) {
+		menu();
+		keyDown();
+		system("pause");
+		system("cls");
+	}
+
+	//system("pause");
+	return 0;
+}
+
+void menu() {
+	printf("	湖文图书管理系统\n");
+	printf("-------------------------------------\n");
+	printf("\t  1.浏览书籍\n");
+	printf("\t  2.添加书籍\n");
+	printf("\t  3.借阅书籍\n");
+	printf("\t  4.归还书籍\n");
+	printf("\t  5.书籍排序\n");
+	printf("\t  6.书籍查找\n");
+	printf("\t  7.书籍删除\n");
+	printf("\t  0.退出系统\n");
+	printf("-------------------------------------\n");
+	printf("请输入操作序号：");
+}
+
+void keyDown() {
+
+	struct bookInfo tempBook;
+	struct Node* result = NULL;
+
+	int kb;
+	scanf_s("%d", &kb);
+
+	switch (kb) {
+	case 0:
+		printf("【 退出系统 】\n");
+		exit(0);
+		break;
+	case 1:
+		printf("【 浏览书籍 】\n");
+		printList(list);
+		break;
+	case 2:
+		printf("【 添加书籍 】\n");
+		printf("请输入书籍信息(name, price, num)：\n");
+		scanf("%s %f %d", tempBook.name, &tempBook.price, &tempBook.num);
+		insertNode(list, tempBook);
+		writeToFile("bookinfo.txt", list);
+		break;
+	case 3:
+		printf("【 借阅书籍 】\n");
+		printf("请输入书名进行借阅：\n");
+		scanf("%s", tempBook.name);
+		result = searchNode(list, tempBook.name);
+		if (result == NULL) {
+			//这里不需要输出提示，在查找中已经输出
+		}
+		else if(result->book.num>0){
+			result->book.num--;
+			printf("借阅成功\n");
+		} else {
+			printf("这本书没了\n");
+		}
+		break;
+	case 4:
+		printf("【 归还书籍 】\n");
+		printf("请输入书名进行归还：\n");
+		scanf("%s", tempBook.name);
+		result = searchNode(list, tempBook.name);
+		if (result == NULL) {
+			//这里不需要输出提示，在查找中已经输出
+		}
+		else {
+			result->book.num++;
+		}
+		break;
+	case 5:
+		printf("【 书籍排序 】\n");
+		bubbleSortList(list);
+		break;
+	case 6:
+		printf("【 书籍查找 】\n");
+		printf("请输入书名进行查找：\n");
+		scanf("%s", tempBook.name);
+		searchNode(list, tempBook.name);
+		break;
+	case 7:
+		printf("【 书籍删除 】\n");
+		printf("请输入书名进行删除：\n");
+		scanf("%s", tempBook.name);
+		deleteNode(list, tempBook.name);
+		writeToFile("bookinfo.txt", list);
+		break;
+	default:
+		printf("你的输入有误！\n");
+	}
+}
+
+struct Node* createHead() {
+	struct Node* headNode = (struct Node*)malloc(sizeof(struct Node));
+	if (headNode == NULL)
+		printf("error_Memory");
+	else
+		headNode->next = NULL;
+	return headNode;
+}
+
+struct Node* createNode(struct bookInfo book) {
+	struct Node* newNode = (struct Node*)malloc(sizeof(struct Node));
+	if (newNode == NULL){
+		printf("error_Memory");
+	}
+	else {
+		newNode->book = book;
+		newNode->next = NULL;
+	}
+	return newNode;
+}
+
+void printList(struct Node* headNode) {
+	struct Node* pMove = headNode->next;
+	while (pMove) {
+		printf("%s\t%.1f\t%d\n", pMove->book.name, pMove->book.price, pMove->book.num);
+		pMove = pMove->next;
+	}
+}
+
+void insertNode(struct Node* headNode, struct bookInfo book) {
+	struct Node* newNode = createNode(book);
+	newNode->next = headNode->next;
+	headNode->next = newNode;
+}
+
+struct Node* searchNode(struct Node* headNode, char *bookname) {
+
+	struct Node* p = headNode;
+	struct Node* q = headNode->next;
+	while (q != NULL && strcmp(q->book.name, bookname)) {
+		p = q;
+		q = q->next;
+	}
+
+	if (q == NULL) {
+		printf("未找到该书籍\n");
+	}
+	else {
+		printf("%s\t%.1f\t%d\n", q->book.name, q->book.price, q->book.num);
+	}
+
+	return q;
+}
+
+void deleteNode(struct Node* headNode, char* bookname) {
+	struct Node* p = headNode;
+	struct Node* q = headNode->next;
+	while (q != NULL && strcmp(q->book.name, bookname)) {
+		p = q;
+		q = q->next;
+	}
+	if (q == NULL) {
+		printf("没有这本书\n");
+	}
+	else {
+		p->next = q->next;
+		free(q);
+		printf("删除成功\n");
+	}
+}
+
+void writeToFile(char* filename, struct Node* headNode) {
+	FILE* fp = fopen(filename, "w");
+
+	struct Node* pMove = headNode->next;
+
+	while (pMove) {
+		fprintf(fp, "%s\t%.1f\t%d\n", pMove->book.name, pMove->book.price, pMove->book.num);
+		pMove = pMove->next;
+	}
+
+	fclose(fp);
+}
+
+void readFromFile(const char* filename, struct Node* headNode) {
+	FILE* fp = fopen(filename, "r");
+	if (fp == NULL) {
+		fp = fopen(filename, "w+");
+	}
+
+	struct bookInfo tempData;
+
+	while (fscanf(fp, "%s\t%f\t%d\n", tempData.name, &tempData.price, &tempData.num) != EOF) {
+		insertNode(headNode, tempData);
+	}
+
+	fclose(fp);
+}
+
+void bubbleSortList(struct Node *headNode) {
+
+	for (struct Node* p = headNode; p; p = p->next) {
+		for (struct Node* q = p; q->next; q = q->next) {
+
+			if (q->book.price > q->next->book.price) {
+				struct bookInfo tempbook;
+				tempbook = q->book;
+				q->book = q->next->book;
+				q->next->book = tempbook;
+			}
+			
+		}
+	}
+
+	printList(list);
+
+}
